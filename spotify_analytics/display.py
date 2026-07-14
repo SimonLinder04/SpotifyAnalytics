@@ -1,19 +1,18 @@
-import copy
 import json
-
+from typing import Any
 
 from spotify_analytics.settings import load_settings
 
 LIST_SEPARATOR = "-" * 60
 
 
-def contains_list(data):
+def contains_list(data: Any) -> bool:
     return isinstance(data, list) or (
         isinstance(data, dict) and isinstance(data.get("items"), list)
     )
 
 
-def print_data(data, depth=0, max_depth=5):
+def print_data(data: Any, depth: int = 0, max_depth: int = 5) -> None:
     indentation = "    " * depth
 
     if isinstance(data, dict):
@@ -35,17 +34,10 @@ def print_data(data, depth=0, max_depth=5):
     else:
         print(indentation + str(data))
 
-def add_item_indexes(data):
-    indexed_data = copy.deepcopy(data)
-    items = indexed_data.get("items", [])
-    offset = indexed_data.get("offset", 0)
-    for position, item in enumerate(items, start=offset + 1):
-        if isinstance(item, dict):
-            items[position - offset - 1] = {"index": position, **item}
-    return indexed_data
+def item_summary(item: Any) -> str:
+    if not isinstance(item, dict):
+        return str(item)
 
-
-def item_summary(item):
     content = item.get("track") or item.get("item") or item
     if not isinstance(content, dict):
         return str(content)
@@ -63,7 +55,7 @@ def item_summary(item):
     return name
 
 
-def print_simple(data):
+def print_simple(data: Any) -> None:
     if not isinstance(data, dict):
         print(data)
         return
@@ -99,7 +91,7 @@ def print_simple(data):
         print(f"Spotify: {spotify_url}")
 
 
-def display_data(data):
+def display_data(data: Any) -> None:
     view_mode = load_settings()["view_mode"]
     has_list = contains_list(data)
     if has_list:

@@ -1,4 +1,5 @@
 from urllib.parse import urlparse
+from typing import Any, Mapping
 
 import requests
 
@@ -6,7 +7,7 @@ from spotify_analytics.auth import get_access_token
 from spotify_analytics.config import API_BASE_URL
 
 
-def extract_spotify_id(value, resource_type):
+def extract_spotify_id(value: str, resource_type: str) -> str | None:
     value = value.strip()
     uri_prefix = f"spotify:{resource_type}:"
     if value.startswith(uri_prefix):
@@ -23,7 +24,9 @@ def extract_spotify_id(value, resource_type):
     return None
 
 
-def spotify_get(path, parameters=None):
+def spotify_get(
+    path: str, parameters: Mapping[str, Any] | None = None
+) -> dict[str, Any]:
     api_prefix = f"{API_BASE_URL}/"
     url = path if path.startswith(api_prefix) else f"{api_prefix}{path.lstrip('/')}"
     response = requests.get(
@@ -36,23 +39,42 @@ def spotify_get(path, parameters=None):
         timeout=15,
     )
     response.raise_for_status()
-    return response.json()
+    data = response.json()
+    if not isinstance(data, dict):
+        raise RuntimeError("Spotify returned an unexpected response format.")
+    return data
 
 
-def spotify_get_items(path, item_count, parameters=None):
+def page_items(page: Mapping[str, Any]) -> list[Any]:
+    items = page.get("items", [])
+    if not isinstance(items, list):
+        raise RuntimeError("Spotify returned an invalid items page.")
+    return items
+
+
+def spotify_get_items(
+    path: str,
+    item_count: int,
+    parameters: Mapping[str, Any] | None = None,
+) -> list[Any]:
+    if item_count < 1:
+        raise ValueError("Item count must be at least 1.")
+
     request_parameters = dict(parameters or {})
     request_parameters["limit"] = min(item_count, 50)
     page = spotify_get(path, request_parameters)
-    combined_page = dict(page)
-    combined_items = list(page.get("items", []))
+    combined_items = page_items(page).copy()
 
     next_page = page.get("next")
+    visited_pages: set[str] = set()
     while next_page and len(combined_items) < item_count:
+        if not isinstance(next_page, str):
+            raise RuntimeError("Spotify returned an invalid pagination link.")
+        if next_page in visited_pages:
+            raise RuntimeError("Spotify pagination returned the same page more than once.")
+        visited_pages.add(next_page)
         page = spotify_get(next_page)
-        combined_items.extend(page.get("items", []))
+        combined_items.extend(page_items(page))
         next_page = page.get("next")
 
-    combined_page["items"] = combined_items[:item_count]
-    combined_page["limit"] = item_count
-    combined_page["next"] = next_page
-    return combined_page
+    return combined_items[:item_count]

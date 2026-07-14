@@ -151,7 +151,9 @@ def get_access_token(force_login=False):
         if cached_token and cached_token.get("expires_at", 0) > time.time():
             return cached_token["access_token"]
         if cached_token and cached_token.get("refresh_token"):
-            return refresh_access_token(client_id, cached_token)["access_token"]
+            refreshed_token = refresh_access_token(client_id, cached_token)
+            if refreshed_token:
+                return refreshed_token["access_token"]
         return authorize_user(client_id)["access_token"]
 
     manual_token = os.getenv("SPOTIFY_ACCESS_TOKEN", "").strip()

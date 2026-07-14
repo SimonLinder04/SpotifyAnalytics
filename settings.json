@@ -1,4 +1,4 @@
 {
-    "view_mode": "simple",
-    "item_limit": 500
+    "view_mode": "padded",
+    "item_limit": 200
 }
