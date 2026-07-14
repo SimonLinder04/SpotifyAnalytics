@@ -1,0 +1,14 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Run Spotify Artist Lookup",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/SpotifyAnalyticsApplicaton.py",
+            "python": "C:\\Users\\Simon Linder\\AppData\\Local\\Programs\\Python\\Python313\\python.exe",
+            "console": "integratedTerminal",
+            "envFile": "${workspaceFolder}/.env"
+        }
+    ]
+}
