@@ -1,14 +1,10 @@
-import json
-
 import requests
 
 from spotify_analytics.auth import sign_in
-from spotify_analytics.client import extract_spotify_id, spotify_get
+from spotify_analytics.client import extract_spotify_id, spotify_get, spotify_get_items
 from spotify_analytics.config import load_environment_file
-
-
-def print_json(data):
-    print(json.dumps(data, indent=2, ensure_ascii=False))
+from spotify_analytics.display import add_item_indexes, display_data
+from spotify_analytics.settings import load_settings, open_settings
 
 
 def get_linked_resource(resource_type):
@@ -17,7 +13,7 @@ def get_linked_resource(resource_type):
     if not resource_id:
         print(f"That is not a valid Spotify {resource_type} link or URI.")
         return
-    print_json(spotify_get(f"{resource_type}s/{resource_id}"))
+    display_data(spotify_get(f"{resource_type}s/{resource_id}"))
 
 
 def get_playlist_items():
@@ -26,11 +22,23 @@ def get_playlist_items():
     if not playlist_id:
         print("That is not a valid Spotify playlist link or URI.")
         return
-    print_json(spotify_get(f"playlists/{playlist_id}/items", {"limit": 10}))
+    settings = load_settings()
+    display_data(
+        spotify_get_items(
+            f"playlists/{playlist_id}/items",
+            settings["item_limit"],
+        )
+    )
 
 
 def get_my_playlists():
-    print_json(spotify_get("me/playlists", {"limit": 10}))
+    settings = load_settings()
+    display_data(
+        spotify_get_items(
+            "me/playlists",
+            settings["item_limit"],
+        )
+    )
 
 
 def get_my_top(item_type):
@@ -39,25 +47,29 @@ def get_my_top(item_type):
         "2": "medium_term",
         "3": "long_term",
     }
-    print("1. Last 4 weeks")
+    print("1. Last 1 month")
     print("2. Last 6 months")
-    print("3. About the last year")
+    print("3. Last 12 months")
     selected_range = input("Choose a time range [2]: ").strip() or "2"
     time_range = time_ranges.get(selected_range)
     if not time_range:
         print("Invalid time range.")
         return
 
-    print_json(
-        spotify_get(
-            f"me/top/{item_type}",
-            {"time_range": time_range, "limit": 10},
-        )
+    settings = load_settings()
+    top_items = spotify_get_items(
+        f"me/top/{item_type}",
+        settings["item_limit"],
+        {
+            "time_range": time_range,
+        },
     )
+    display_data(add_item_indexes(top_items))
 
 
 def get_recently_played():
-    print_json(spotify_get("me/player/recently-played", {"limit": 10}))
+    item_limit = load_settings()["item_limit"]
+    display_data(spotify_get_items("me/player/recently-played", item_limit))
 
 
 def show_http_error(error):
@@ -94,6 +106,7 @@ def main():
         "8": lambda: get_my_top("artists"),
         "9": get_recently_played,
         "10": sign_in,
+        "11": open_settings,
     }
 
     while True:
@@ -108,6 +121,7 @@ def main():
         print("8. Get my top artists")
         print("9. Get my recently played tracks")
         print("10. Sign in or reconnect Spotify account")
+        print("11. Settings")
         print("0. Exit")
 
         choice = input("Choose an option: ").strip()
@@ -117,7 +131,7 @@ def main():
 
         action = actions.get(choice)
         if not action:
-            print("Invalid option. Choose a number from 0 to 10.")
+            print("Invalid option. Choose a number from 0 to 11.")
             continue
 
         try:

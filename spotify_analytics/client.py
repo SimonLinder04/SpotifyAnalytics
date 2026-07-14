@@ -24,7 +24,8 @@ def extract_spotify_id(value, resource_type):
 
 
 def spotify_get(path, parameters=None):
-    url = f"{API_BASE_URL}/{path.lstrip('/')}"
+    api_prefix = f"{API_BASE_URL}/"
+    url = path if path.startswith(api_prefix) else f"{api_prefix}{path.lstrip('/')}"
     response = requests.get(
         url,
         params=parameters,
@@ -36,3 +37,22 @@ def spotify_get(path, parameters=None):
     )
     response.raise_for_status()
     return response.json()
+
+
+def spotify_get_items(path, item_count, parameters=None):
+    request_parameters = dict(parameters or {})
+    request_parameters["limit"] = min(item_count, 50)
+    page = spotify_get(path, request_parameters)
+    combined_page = dict(page)
+    combined_items = list(page.get("items", []))
+
+    next_page = page.get("next")
+    while next_page and len(combined_items) < item_count:
+        page = spotify_get(next_page)
+        combined_items.extend(page.get("items", []))
+        next_page = page.get("next")
+
+    combined_page["items"] = combined_items[:item_count]
+    combined_page["limit"] = item_count
+    combined_page["next"] = next_page
+    return combined_page
